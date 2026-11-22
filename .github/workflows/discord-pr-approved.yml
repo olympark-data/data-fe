@@ -1,0 +1,40 @@
+name: Discord Notify - PR Approved
+
+# 승인 수가 REQUIRED_APPROVALS(조직·저장소 변수, 기본 1)에 정확히 도달했을 때 한 번만 알림
+# 승인 없이도 머지는 가능하다 (브랜치 규칙 승인 0). 이 알림은 "리뷰어가 확인함"을 알리는 용도
+# 작성자 멘션: 저장소 변수 DISCORD_IDS = {"깃허브아이디":"디스코드숫자ID", ...}
+
+on:
+  pull_request_review:
+    types: [submitted]
+
+jobs:
+  notify:
+    if: github.event.review.state == 'approved'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check approval count and notify
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          DISCORD_IDS: ${{ vars.DISCORD_IDS }}
+          REQUIRED: ${{ vars.REQUIRED_APPROVALS || '1' }}
+          PR_NUM: ${{ github.event.pull_request.number }}
+          TITLE: ${{ github.event.pull_request.title }}
+          URL: ${{ github.event.pull_request.html_url }}
+          REPO: ${{ github.repository }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          # 같은 사람이 여러 번 승인해도 한 명으로 센다 (각 리뷰어의 마지막 상태 기준)
+          APPROVAL_COUNT=$(gh api "repos/$REPO/pulls/$PR_NUM/reviews" --paginate \
+            | jq -s 'add | group_by(.user.login) | map(last) | map(select(.state == "APPROVED")) | length')
+          echo "Current approvals: $APPROVAL_COUNT / $REQUIRED"
+
+          if [ "$APPROVAL_COUNT" -eq "$REQUIRED" ]; then
+            DISCORD_ID=$(echo "${DISCORD_IDS:-{\}}" | jq -r --arg a "$AUTHOR" '.[$a] // empty' 2>/dev/null || true)
+            if [ -n "$DISCORD_ID" ]; then MENTION="<@$DISCORD_ID>"; else MENTION="@$AUTHOR"; fi
+
+            MSG=$(printf '**PR 승인 %s개 완료** %s\n\n**#%s %s**\n%s\n\n머지 가능 상태입니다.' "$REQUIRED" "$MENTION" "$PR_NUM" "$TITLE" "$URL")
+            jq -n --arg c "$MSG" '{content: $c, allowed_mentions: {parse: ["users"]}}' \
+              | curl -sS -X POST -H "Content-Type: application/json" -d @- "$DISCORD_WEBHOOK_URL"
+          fi

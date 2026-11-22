@@ -1,0 +1,15 @@
+.env
+node_modules/
+.DS_Store
+.idea/
+.vscode/
+
+# AI 도구 파일 (Claude Code, oh-my-claudecode 등)
+.omc/
+.claude/
+CLAUDE.md
+CLAUDE.local.md
+AGENTS.md
+.cursor/
+.codex/
+.gemini/

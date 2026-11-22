@@ -1,0 +1,25 @@
+name: main-from-dev-only
+
+# main으로 가는 PR은 dev에서 온 것만 허용한다.
+# 브랜치 보호(main)의 필수 status check에 source-branch를 넣으면 dev가 아닌 브랜치는 머지할 수 없다.
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, reopened, synchronize, edited]
+
+jobs:
+  source-branch:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check source branch is dev
+        env:
+          HEAD_REF: ${{ github.head_ref }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          BASE_REPO: ${{ github.repository }}
+        run: |
+          if [ "$HEAD_REF" != "dev" ] || [ "$HEAD_REPO" != "$BASE_REPO" ]; then
+            echo "main에는 이 저장소의 dev 브랜치에서만 PR을 보낼 수 있어요. (지금: $HEAD_REPO / $HEAD_REF)"
+            exit 1
+          fi
+          echo "dev → main PR 확인"
