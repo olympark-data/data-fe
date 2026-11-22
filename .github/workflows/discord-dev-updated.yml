@@ -1,0 +1,22 @@
+name: Discord Notify - Dev Updated
+
+on:
+  pull_request:
+    types: [closed]
+
+jobs:
+  notify:
+    # PR이 merge 되었고 base 브랜치가 dev일 때만 실행
+    if: github.event.pull_request.merged == true && github.event.pull_request.base.ref == 'dev'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Discord notification (dev updated)
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          PR_NUM: ${{ github.event.pull_request.number }}
+          TITLE: ${{ github.event.pull_request.title }}
+          URL: ${{ github.event.pull_request.html_url }}
+        run: |
+          MSG=$(printf '**dev 브랜치 업데이트됨**\n\nPR #%s %s\n%s\n\ndev 브랜치 pull 받아 주세요. 마이그레이션이 바뀌었으면 docker compose up -d --build 로 다시 띄워 주세요.' "$PR_NUM" "$TITLE" "$URL")
+          jq -n --arg c "$MSG" '{content: $c}' \
+            | curl -sS -X POST -H "Content-Type: application/json" -d @- "$DISCORD_WEBHOOK_URL"

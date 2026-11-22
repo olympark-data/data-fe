@@ -1,0 +1,15 @@
+# data-fe 로컬 실행용 (nginx). 백엔드는 data-be 저장소에서 먼저 띄워 두세요.
+services:
+  frontend:
+    image: nginx:1.27-alpine
+    environment:
+      BACKEND_1: ${BACKEND_1}
+      BACKEND_2: ${BACKEND_2}
+    ports:
+      - "${WEB_HOST_PORT:-8080}:80"
+    # 내 PC에서 실행 중인 백엔드(data-be)를 host.docker.internal로 찾을 수 있게 (리눅스 서버에서도 동작)
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./nginx/templates:/etc/nginx/templates:ro
+      - ./dist:/usr/share/nginx/html:ro

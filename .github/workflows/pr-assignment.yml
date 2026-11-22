@@ -1,0 +1,51 @@
+name: PR Assignment
+
+# 작성자를 assignee로 지정하고, 저장소 변수 REVIEWERS(쉼표 구분 깃허브 아이디)에서 작성자를 뺀 사람들을 리뷰어로 지정
+
+on:
+  pull_request:
+    types: [opened, ready_for_review, reopened]
+
+permissions:
+  pull-requests: write
+  issues: write
+
+jobs:
+  assign:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Assign author and reviewers
+        uses: actions/github-script@v7
+        env:
+          REVIEWERS: ${{ vars.REVIEWERS }}
+        with:
+          script: |
+            const pr = context.payload.pull_request;
+            const { owner, repo } = context.repo;
+            const author = pr.user.login;
+            const assignees = pr.assignees.map(a => a.login);
+
+            if (assignees.length === 0) {
+              try {
+                await github.rest.issues.addAssignees({ owner, repo, issue_number: pr.number, assignees: [author] });
+              } catch (e) {
+                core.warning(`assignee 지정 실패: ${e.message}`);
+              }
+            }
+
+            if (pr.draft) {
+              core.info('draft PR이라 리뷰어는 지정하지 않아요.');
+              return;
+            }
+            const reviewers = (process.env.REVIEWERS || '')
+              .split(',').map(s => s.trim()).filter(Boolean)
+              .filter(r => r !== author && !assignees.includes(r));
+            if (reviewers.length === 0) {
+              core.info('지정할 리뷰어가 없어요. 저장소 변수 REVIEWERS를 확인하세요.');
+              return;
+            }
+            try {
+              await github.rest.pulls.requestReviewers({ owner, repo, pull_number: pr.number, reviewers });
+            } catch (e) {
+              core.warning(`reviewer 지정 실패: ${e.message}`);
+            }

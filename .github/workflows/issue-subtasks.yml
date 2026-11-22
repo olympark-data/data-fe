@@ -1,0 +1,29 @@
+name: Issue Sub-tasks Sync
+
+# PR 본문에 #이슈번호(또는 제목에 [OLP-이슈번호])가 있으면
+# 그 이슈의 "하위 작업" 칸에 이 PR을 추가하고, 머지되면 체크한다.
+
+on:
+  pull_request:
+    types: [opened, edited, reopened, closed]
+
+permissions:
+  issues: write
+  contents: read
+
+concurrency:
+  group: issue-subtasks-${{ github.repository }}
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github/scripts
+      - uses: actions/github-script@v7
+        with:
+          script: |
+            const run = require('./.github/scripts/sync-subtasks.js');
+            await run({ github, context, core });

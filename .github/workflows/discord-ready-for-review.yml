@@ -1,0 +1,22 @@
+name: Discord Notify - Ready for Review
+
+on:
+  pull_request:
+    types: [labeled]
+
+jobs:
+  notify:
+    if: github.event.label.name == 'ready-for-review'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Send Discord notification
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          PR_NUM: ${{ github.event.pull_request.number }}
+          TITLE: ${{ github.event.pull_request.title }}
+          URL: ${{ github.event.pull_request.html_url }}
+          AUTHOR: ${{ github.event.pull_request.user.login }}
+        run: |
+          MSG=$(printf '**PR 리뷰 요청**\n\n**#%s %s**\n%s\n작성자: %s' "$PR_NUM" "$TITLE" "$URL" "$AUTHOR")
+          jq -n --arg c "$MSG" '{content: $c}' \
+            | curl -sS -X POST -H "Content-Type: application/json" -d @- "$DISCORD_WEBHOOK_URL"
