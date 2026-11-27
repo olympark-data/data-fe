@@ -5,6 +5,7 @@ services:
     environment:
       BACKEND_1: ${BACKEND_1}
       BACKEND_2: ${BACKEND_2}
+      NGINX_LISTEN: "80"
     ports:
       - "${WEB_HOST_PORT:-8080}:80"
     # 내 PC에서 실행 중인 백엔드(data-be)를 host.docker.internal로 찾을 수 있게 (리눅스 서버에서도 동작)

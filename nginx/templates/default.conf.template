@@ -1,23 +1,38 @@
-# nginx 공식 이미지가 시작할 때 ${BACKEND_1}, ${BACKEND_2}를 .env 값으로 바꿔 넣어요.
+# nginx 공식 이미지가 시작할 때 ${BACKEND_1}, ${BACKEND_2}, ${NGINX_LISTEN}을 환경 변수 값으로 바꿔 넣어요.
+
+# Cloudflare를 거쳐 온 요청이면 원래 프로토콜(https)을, 아니면 지금 프로토콜을 넘겨요.
+map $http_x_forwarded_proto $forwarded_proto {
+    default $http_x_forwarded_proto;
+    ""      $scheme;
+}
+
 upstream backend_api {
-    server ${BACKEND_1};
-    server ${BACKEND_2};
+    server ${BACKEND_1} max_fails=3 fail_timeout=10s;
+    server ${BACKEND_2} max_fails=3 fail_timeout=10s;
 }
 
 server {
-    listen 80;
+    listen ${NGINX_LISTEN};
     server_name _;
     client_max_body_size 20m;
+    server_tokens off;
+
+    # 서버에서는 cloudflared가 같은 VM(127.0.0.1)에서 접속해요.
+    # 그때만 Cloudflare가 붙여 준 사용자 실제 IP(CF-Connecting-IP)를 사용자 주소로 써요.
+    set_real_ip_from 127.0.0.1;
+    real_ip_header CF-Connecting-IP;
 
     root /usr/share/nginx/html;
     index index.html;
 
     location /api/ {
         proxy_pass http://backend_api;
+        # 백엔드 한 대가 죽어 있으면 다른 한 대로 다시 보내요.
+        proxy_next_upstream error timeout http_502 http_503;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_set_header X-Forwarded-Proto $forwarded_proto;
     }
 
     location / {
