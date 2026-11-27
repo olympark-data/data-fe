@@ -1,0 +1,10 @@
+/* 전역 스타일. 화면별 스타일은 각 컴포넌트 옆에 둔다. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+}
