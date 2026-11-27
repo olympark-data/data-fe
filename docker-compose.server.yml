@@ -1,0 +1,29 @@
+# 서버(frontend VM)용. 로컬 개발은 docker-compose.yml을 쓴다.
+# 이미지는 GitHub Actions가 GHCR에 올린 것을 받아서 쓴다 (서버에서 빌드하지 않음).
+#
+# 실행 (frontend VM의 /opt/olympark/data-fe 에서):
+#   docker compose -f docker-compose.server.yml pull
+#   docker compose -f docker-compose.server.yml up -d
+#
+# network_mode: host 를 쓰는 이유: 도커가 포트를 열 때 VM 방화벽(firewalld)을 건너뛰지 않게 하려고.
+# nginx는 127.0.0.1:80에서만 받는다. 바깥 요청은 같은 VM의 cloudflared(8단계)를 거쳐서만 들어온다.
+
+services:
+  frontend:
+    image: ghcr.io/olympark-data/data-fe:${IMAGE_TAG:-dev}
+    network_mode: host
+    environment:
+      BACKEND_1: ${BACKEND_1:-10.10.2.31:8000}
+      BACKEND_2: ${BACKEND_2:-10.10.2.32:8000}
+      NGINX_LISTEN: ${NGINX_LISTEN:-127.0.0.1:80}
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1/"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
