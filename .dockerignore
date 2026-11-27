@@ -4,6 +4,8 @@
 .env.*
 *.md
 docker-compose*.yml
+node_modules/
+dist/
 .DS_Store
 .idea/
 .vscode/

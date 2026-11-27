@@ -25,5 +25,5 @@ jobs:
       - uses: actions/github-script@v7
         with:
           script: |
-            const run = require('./.github/scripts/sync-subtasks.js');
+            const run = require('./.github/scripts/sync-subtasks.cjs');
             await run({ github, context, core });
